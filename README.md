@@ -81,6 +81,15 @@ See `BRIEF.md` and its Addendum for the full evidence chain, including an
 independent recount of the GitHub-search demand signal (466 unique repos,
 not the original 73).
 
+**Live-verified against the real Gemini API** (`scripts/live-verify-gemini.mjs`,
+requires `GEMINI_API_KEY`): a real `gemini-3.5-flash` call returns a real
+`functionCall` + sibling `thoughtSignature`, `extractThoughtSignature()`
+pulls it, `attachThoughtSignature()` reinserts it, and the reattached
+signature is accepted on the next turn (no 400) with the tool-result data
+genuinely reaching the model's final answer. Anthropic and OpenAI live
+verification is still open -- shapes are confirmed against primary docs
+but not yet round-tripped against a real API call.
+
 ## License
 
 MIT
