@@ -4,17 +4,37 @@ Provider-agnostic round-tripping for opaque "reasoning signature" tokens
 across multi-turn LLM tool calling — Gemini's `thoughtSignature`,
 Anthropic's signed thinking blocks, OpenAI's `encrypted_content`.
 
-## The problem
+## Why I built this
+
+I kept hitting the same failure while wiring multi-turn tool calling
+against thinking models: a function call would come back with an opaque
+signature attached, my code would forget to send it back exactly right,
+and the next turn would fail — sometimes a clear 400, sometimes just a
+silently dropped reasoning trace. Every provider needed different
+handling, and the handling kept breaking as providers changed their API
+shape. Google moved `thoughtSignature` from inside `functionCall` (Gemini
+2.5) to a sibling field on the `Part` object (Gemini 3) in ~Nov 2025, and
+whatever adapter I'd written for the old shape just silently stopped
+attaching anything on the new one.
+
+Once I went looking, I wasn't alone. A GitHub search for the failure
+signature turns up 466 distinct repositories independently hitting
+variants of it, with no shared vocabulary: `mlflow/mlflow#25745`, over a
+dozen separate PRs to `vercel/ai` each patching a *different* instance of
+the same underlying problem, and a handful of single-purpose proxies
+built by different people to patch just their own tool, none referencing
+each other. A recent paper (arXiv 2608.09867) independently names this
+same class of opaque, provider-issued reasoning token — across OpenAI,
+Anthropic, and Gemini — as an unsolved, structural problem, not a one-off
+rough edge.
+
+## The problem, precisely
 
 Modern "thinking" models attach an opaque, provider-issued signature to
-each function-call turn as proof the reasoning trace wasn't tampered with.
-Every abstraction layer between the raw API and the developer has to
-reimplement extraction/round-trip logic to match — and that logic keeps
-breaking as providers change their API shape. Google moved
-`thoughtSignature` from inside `functionCall` (Gemini 2.5) to a sibling
-field on the `Part` object (Gemini 3) in ~Nov 2025; as of this package,
-466 distinct GitHub repositories have independently hit failures in this
-category (see `BRIEF.md`).
+each function-call turn as proof the reasoning trace wasn't tampered
+with. Every abstraction layer between the raw API and the developer has
+to reimplement extraction/round-trip logic to match, and that logic keeps
+breaking as providers change their API shape.
 
 ## Three genuinely different shapes, not one
 
@@ -76,10 +96,6 @@ assumed:
 - OpenAI: confirmed against
   `developers.openai.com/api/docs/guides/reasoning` and the
   `reasoning.encrypted_content` include-parameter behavior.
-
-See `BRIEF.md` and its Addendum for the full evidence chain, including an
-independent recount of the GitHub-search demand signal (466 unique repos,
-not the original 73).
 
 **Live-verified against the real Gemini API** (`scripts/live-verify-gemini.mjs`,
 requires `GEMINI_API_KEY`): a real `gemini-3.5-flash` call returns a real
